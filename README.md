@@ -6,7 +6,7 @@ Hello! My name is Simon Tanenbaum, and I'm delighted to share my technical exper
 I am passionate about technology and have dedicated myself to mastering various aspects of computer science. With a laundry list of certifications under my belt, I bring a wealth of knowledge and experience to the table.
 What You'll Find Here
 
-In this repository, you'll discover a diverse range of computer science projects that showcase my skills and expertise. From programming assignments to software development projects, there's something for everyone to explore.
+In this repository, you'll discover a diverse range of computer science projects that showcase my skills and expertise. From data science assignments to cybersecurity projects, there's something for everyone to explore.
 Get in Touch
 
 If you have any questions, feedback, or collaboration opportunities, please feel free to reach out. I'm always excited to connect with fellow tech enthusiasts and explore new opportunities together.
