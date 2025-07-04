@@ -1,0 +1,125 @@
+def retirement_and_knowledge_calculator(
+    current_age,
+    retirement_age,
+    current_investments,
+    annual_investment_growth,
+    annual_contribution,
+    current_crypto,
+    annual_crypto_growth,
+    current_home_value,
+    annual_home_appreciation,
+    expected_years_retired,
+    annual_withdrawal,
+    inheritance_tax_rate,
+    num_kids,
+    # Academic starting levels (0 to 1 scale)
+    physics_level,
+    calculus_level,
+    algebra_level,
+    programming_math_level,
+    cs_math_level,
+    # Academic annual growth rates (0 to 1 scale)
+    physics_growth,
+    calculus_growth,
+    algebra_growth,
+    programming_math_growth,
+    cs_math_growth
+):
+    years_to_retirement = retirement_age - current_age
+
+    
+    investments = current_investments
+    for _ in range(years_to_retirement):
+        investments = investments * (1 + annual_investment_growth) + annual_contribution
+
+    
+    crypto = current_crypto
+    for _ in range(years_to_retirement):
+        crypto = crypto * (1 + annual_crypto_growth)
+
+    
+    home_value = current_home_value
+    for _ in range(years_to_retirement):
+        home_value = home_value * (1 + annual_home_appreciation)
+
+    
+    total_net_worth = investments + crypto + home_value
+
+    
+    total_withdrawn = annual_withdrawal * expected_years_retired
+    remaining_assets = max(total_net_worth - total_withdrawn, 0)
+
+    # Calculate inheritance tax
+    after_tax_inheritance = remaining_assets * (1 - inheritance_tax_rate)
+
+    
+    if num_kids > 0:
+        per_kid_inheritance = after_tax_inheritance / num_kids
+    else:
+        per_kid_inheritance = after_tax_inheritance
+
+    # Academic mastery growth simulation
+    def simulate_growth(start_level, annual_growth):
+        level = start_level
+        for _ in range(years_to_retirement):
+            level += (1 - level) * annual_growth
+            if level > 1:
+                level = 1
+        return level
+
+    final_physics = simulate_growth(physics_level, physics_growth)
+    final_calculus = simulate_growth(calculus_level, calculus_growth)
+    final_algebra = simulate_growth(algebra_level, algebra_growth)
+    final_programming_math = simulate_growth(programming_math_level, programming_math_growth)
+    final_cs_math = simulate_growth(cs_math_level, cs_math_growth)
+
+    return {
+        "total_net_worth_at_retirement": total_net_worth,
+        "remaining_assets_at_passing": remaining_assets,
+        "after_tax_inheritance": after_tax_inheritance,
+        "per_kid_inheritance": per_kid_inheritance,
+        "final_physics_level": final_physics,
+        "final_calculus_level": final_calculus,
+        "final_algebra_level": final_algebra,
+        "final_programming_math_level": final_programming_math,
+        "final_cs_math_level": final_cs_math
+    }
+
+
+
+result = retirement_and_knowledge_calculator(
+    current_age=30,
+    retirement_age=65,
+    current_investments=100000,
+    annual_investment_growth=0.07,
+    annual_contribution=10000,
+    current_crypto=20000,
+    annual_crypto_growth=0.15,
+    current_home_value=300000,
+    annual_home_appreciation=0.03,
+    expected_years_retired=25,
+    annual_withdrawal=50000,
+    inheritance_tax_rate=0.30,
+    num_kids=2,
+    physics_level=0.2,
+    calculus_level=0.3,
+    algebra_level=0.4,
+    programming_math_level=0.25,
+    cs_math_level=0.2,
+    physics_growth=0.05,
+    calculus_growth=0.05,
+    algebra_growth=0.05,
+    programming_math_growth=0.07,
+    cs_math_growth=0.06
+)
+
+print("Total net worth at retirement: ${:,.2f}".format(result['total_net_worth_at_retirement']))
+print("Remaining assets at passing: ${:,.2f}".format(result['remaining_assets_at_passing']))
+print("Total after-tax inheritance: ${:,.2f}".format(result['after_tax_inheritance']))
+print("Per kid inheritance: ${:,.2f}".format(result['per_kid_inheritance']))
+
+print("Final Physics Mastery Level: {:.2%}".format(result['final_physics_level']))
+print("Final Calculus Mastery Level: {:.2%}".format(result['final_calculus_level']))
+print("Final Algebra Mastery Level: {:.2%}".format(result['final_algebra_level']))
+print("Final Programming Math Mastery Level: {:.2%}".format(result['final_programming_math_level']))
+print("Final CS Math Mastery Level: {:.2%}".format(result['final_cs_math_level']))
