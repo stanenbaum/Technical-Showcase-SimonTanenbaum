@@ -1,0 +1,77 @@
+def retirement_calculator(
+    current_age,
+    retirement_age,
+    current_investments,
+    annual_investment_growth,
+    annual_contribution,
+    current_crypto,
+    annual_crypto_growth,
+    current_home_value,
+    annual_home_appreciation,
+    expected_years_retired,
+    annual_withdrawal,
+    inheritance_tax_rate,
+    num_kids
+):
+    years_to_retirement = retirement_age - current_age
+
+    
+    investments = current_investments
+    for _ in range(years_to_retirement):
+        investments = investments * (1 + annual_investment_growth) + annual_contribution
+
+    
+    crypto = current_crypto
+    for _ in range(years_to_retirement):
+        crypto = crypto * (1 + annual_crypto_growth)
+
+    
+    home_value = current_home_value
+    for _ in range(years_to_retirement):
+        home_value = home_value * (1 + annual_home_appreciation)
+
+    
+    total_net_worth = investments + crypto + home_value
+
+    # Calculate remaining assets after retirement spending
+    total_withdrawn = annual_withdrawal * expected_years_retired
+    remaining_assets = max(total_net_worth - total_withdrawn, 0)
+
+    
+    after_tax_inheritance = remaining_assets * (1 - inheritance_tax_rate)
+
+    
+    if num_kids > 0:
+        per_kid_inheritance = after_tax_inheritance / num_kids
+    else:
+        per_kid_inheritance = after_tax_inheritance
+
+    return {
+        "total_net_worth_at_retirement": total_net_worth,
+        "remaining_assets_at_passing": remaining_assets,
+        "after_tax_inheritance": after_tax_inheritance,
+        "per_kid_inheritance": per_kid_inheritance
+    }
+
+
+
+result = retirement_calculator(
+    current_age=35,
+    retirement_age=65,
+    current_investments=200000,
+    annual_investment_growth=0.07,
+    annual_contribution=15000,
+    current_crypto=50000,
+    annual_crypto_growth=0.15,
+    current_home_value=400000,
+    annual_home_appreciation=0.03,
+    expected_years_retired=25,
+    annual_withdrawal=60000,
+    inheritance_tax_rate=0.30,
+    num_kids=2
+)
+
+print("Total net worth at retirement: ${:,.2f}".format(result['total_net_worth_at_retirement']))
+print("Remaining assets at passing: ${:,.2f}".format(result['remaining_assets_at_passing']))
+print("Total after-tax inheritance: ${:,.2f}".format(result['after_tax_inheritance']))
+print("Per kid inheritance: ${:,.2f}".format(result['per_kid_inheritance']))
