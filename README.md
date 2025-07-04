@@ -11,6 +11,9 @@ Get in Touch
 
 If you have any questions, feedback, or collaboration opportunities, please feel free to reach out. I'm always excited to connect with fellow tech enthusiasts and explore new opportunities together.
 
+⚖️ Disclaimer: All forensic case studies and analyses in this portfolio are for educational purposes only and based entirely on publicly available information. No private data was accessed or used.
+
+
 Thank you for visiting, and I hope you enjoy exploring my work!
 
 Simon Tanenbaum
