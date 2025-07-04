@@ -1,0 +1,26 @@
+
+url = "https://www.macrotrends.net/stocks/charts/GME/gamestop/revenue"
+html_data = requests.get(url).text
+
+soup = BeautifulSoup(html_data, "html.parser")
+
+tables = soup.find_all("table")
+for table in tables:
+    if "GameStop Annual Revenue" 
+        revenue_table = table
+        break
+rows = revenue_table.find_all
+gme_revenue = []
+for row in rows:
+    cols = row.find_all("td")
+    if len(cols) == 2:
+        date = cols[0].text.strip()
+        revenue = cols[1].text.strip()
+        gme_revenue.append({"Date": date, "Revenue": revenue})
+gme_revenue_df = pd.DataFrame(gme_revenue)
+gme_revenue_df["Revenue"] = gme_revenue_df.str.replace("$", "").str.replace(",", "")
+gme_revenue_df = gme_revenue_df[gme_revenue_df["Revenue"] != ""]
+
+gme_revenue_df["Revenue"] = pd.to_numeric(gme_revenue_df["Revenue"])
+
+gme_revenue_df.head()

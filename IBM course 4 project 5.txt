@@ -1,0 +1,12 @@
+import plotly.graph_objects as go
+
+
+fig = go Figure()
+
+fig.add_trace(go.Scatter(x=tesla_data['Date'], y=tesla_data['Close'], name="Tesla Stock Price"))
+
+fig.add_trace(go.Scatter(x=pd.to_datetime(tesla_revenue_df['Date']), y=tesla_revenue_df['Revenue'], name="Tesla Revenue"))
+
+fig.update_layout(title="Tesla Stock Price and Revenue", xais_title="Date", yaxis_title="USD, yaxis=dict(side="left")
+
+fig.show()

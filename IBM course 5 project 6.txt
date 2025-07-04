@@ -1,0 +1,10 @@
+
+fig = go.Figure()
+
+fig.add_trace(go.Scatter(x=gme_data['Date'], y=gme_data['Close'], name="GameStop Stock Price"))
+
+fig.add_trace(go.Scatter(x=pd.to_datetime(gme_revenue_df['Date']), y=gme_revenue_df['Revenue'], name="GameStop Revenue")
+
+fig.update_layout(title="GameStop Stock Price and Revenue", xaxis_title="Date", yaxis_title="USD, yaxis=dict(side="left"))
+
+fig.show()
