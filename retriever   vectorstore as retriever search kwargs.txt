@@ -1,0 +1,7 @@
+retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
+
+query = "Email policy"
+docs = retriever.get_relevant_documents(query)
+
+for doc in docs:
+    print(doc.page_content)

@@ -1,0 +1,8 @@
+from langchain.embeddings import HuggingFaceHubEmbeddings
+
+embeddings = HuggingFaceHubEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+
+query = "How are you?"
+embedding_vector = embeddings.embed_query(query)
+
+print(embedding_vector[:5])

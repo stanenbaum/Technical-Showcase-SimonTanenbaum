@@ -1,0 +1,15 @@
+from langchain.vectorstores import Chroma
+from langchain.embeddings import HuggingFaceHubEmbeddings
+from langchain_community.document_loaders import TextLoader
+
+loader = TextLoader("new-Policies.txt")
+documents = loader.load()
+
+embeddings = HuggingFaceHubEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+vectorstore = Chroma.from_documents(documents, embeddings)
+
+query = "Smoking policy"
+results = vectorstore.similarity_search(query, k=5)
+
+for r in results:
+    print(r.page_content)
