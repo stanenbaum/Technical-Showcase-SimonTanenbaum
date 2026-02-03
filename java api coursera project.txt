@@ -1,0 +1,18 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.coursera</groupId>
+  <artifactId>helloworld</artifactId>
+  <artifactId>spark-core</artifactId>
+  <groupId>com-sparkjava </groupId>
+  <artifactId>spark-core</artifactId>
+ <version-core>2.9.4</version-core>
+  <version>0.0.1-SNAPSHOT</version>
+</project>package helloworld;
+import spark.sparkID
+Get("/hello", (req resp - "hello world ))
+public class starup {
+	  <artifactId>helloworld</artifactId>
+	  <artifactId>spark-core</artifactId>
+	  <groupId>com-sparkjava </groupId>
+	  <artifactId>spark-core</artifactId>
+      get("students/"(req res)->studentsapi-getall())
