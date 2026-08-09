@@ -1,0 +1,830 @@
+import math
+import random
+import sys
+import pygame
+
+pygame.init()
+
+# ============================================================
+# WORLD'S WORST TRAFFIC SIMULATOR
+# A ridiculous arcade driving prototype
+# ============================================================
+
+WIDTH, HEIGHT = 1280, 720
+FPS = 60
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("World's Worst Traffic Simulator")
+clock = pygame.time.Clock()
+
+FONT = pygame.font.Font(None, 30)
+BIG_FONT = pygame.font.Font(None, 58)
+SMALL_FONT = pygame.font.Font(None, 22)
+
+# ------------------------------------------------------------
+# Levels
+# ------------------------------------------------------------
+
+LEVELS = [
+    "Normal American Traffic",
+    "Bogotá Taxi Chaos",
+    "International Scooter Apocalypse",
+    "Farm Animal Invasion",
+    "Elephant Roadblock",
+    "South Dakota Buffalo Survival",
+    "Florida: Gators + Golf Carts + Road Rage",
+    "American City + Everything",
+    "Nepal Mountain Road",
+    "Remote Highway Fuel Survival",
+    "Airport Runway Crossing",
+    "EVERYTHING AT ONCE",
+]
+
+LEVEL_HAZARDS = {
+    1: ["car", "truck"],
+    2: ["car", "truck", "taxi"],
+    3: ["car", "truck", "taxi", "scooter", "bicycle"],
+    4: ["car", "taxi", "scooter", "bicycle", "goat", "cow", "chicken"],
+    5: ["car", "taxi", "scooter", "goat", "cow", "elephant"],
+    6: ["car", "truck", "taxi", "buffalo"],
+    7: ["car", "golfcart", "alligator", "taxi", "pedestrian"],
+    8: [
+        "car", "truck", "taxi", "scooter", "bicycle",
+        "goat", "cow", "chicken", "golfcart"
+    ],
+    9: ["bus", "truck", "car", "taxi"],
+    10: ["car", "truck", "buffalo", "fuel_warning"],
+    11: ["car", "truck", "taxi", "airplane"],
+    12: [
+        "car", "truck", "taxi", "scooter", "bicycle",
+        "goat", "cow", "chicken", "elephant", "buffalo",
+        "alligator", "golfcart", "pedestrian", "airplane"
+    ],
+}
+
+# ------------------------------------------------------------
+# Utility
+# ------------------------------------------------------------
+
+def clamp(value, low, high):
+    return max(low, min(high, value))
+
+
+def distance(a, b):
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+def draw_text(text, x, y, font=FONT, center=False):
+    surface = font.render(str(text), True, (255, 255, 255))
+
+    if center:
+        x -= surface.get_width() // 2
+
+    screen.blit(surface, (x, y))
+
+
+# ------------------------------------------------------------
+# Player
+# ------------------------------------------------------------
+
+class Player:
+    def __init__(self):
+        self.x = WIDTH // 2
+        self.y = HEIGHT - 150
+
+        self.width = 44
+        self.height = 76
+
+        self.speed = 0
+        self.max_speed = 8.0
+        self.acceleration = 0.18
+        self.braking = 0.28
+        self.turn_speed = 5
+
+        self.health = 100
+        self.fuel = 100
+
+        self.distance_traveled = 0
+        self.damage_cooldown = 0
+
+    def update(self, keys, level):
+        # Acceleration
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            self.speed += self.acceleration
+
+        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            self.speed -= self.braking
+
+        else:
+            self.speed *= 0.985
+
+        # Level 10+ can represent the "remote highway" challenge.
+        max_speed = self.max_speed
+
+        if level == 10:
+            max_speed = 11.0
+
+        self.speed = clamp(self.speed, 0, max_speed)
+
+        # Steering
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            self.x -= self.turn_speed
+
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            self.x += self.turn_speed
+
+        self.x = clamp(self.x, 80, WIDTH - 80)
+
+        # Fuel
+        if self.speed > 0:
+            self.fuel -= 0.012 * self.speed
+
+        self.fuel = max(0, self.fuel)
+
+        self.distance_traveled += self.speed * 0.08
+
+        if self.damage_cooldown > 0:
+            self.damage_cooldown -= 1
+
+    def take_damage(self, amount):
+        if self.damage_cooldown <= 0:
+            self.health -= amount
+            self.damage_cooldown = 45
+
+    def rect(self):
+        return pygame.Rect(
+            self.x - self.width // 2,
+            self.y - self.height // 2,
+            self.width,
+            self.height
+        )
+
+    def draw(self):
+        rect = self.rect()
+
+        pygame.draw.rect(screen, (30, 130, 240), rect, border_radius=8)
+
+        pygame.draw.rect(
+            screen,
+            (180, 220, 255),
+            (rect.x + 8, rect.y + 10, rect.width - 16, 22),
+            border_radius=5
+        )
+
+        pygame.draw.rect(
+            screen,
+            (20, 20, 20),
+            (rect.x + 5, rect.bottom - 12, 10, 8)
+        )
+
+        pygame.draw.rect(
+            screen,
+            (20, 20, 20),
+            (rect.right - 15, rect.bottom - 12, 10, 8)
+        )
+
+
+# ------------------------------------------------------------
+# Hazards
+# ------------------------------------------------------------
+
+HAZARD_DATA = {
+    "car":       ((200, 200, 200), 42, 70, 4.0, 8),
+    "truck":     ((120, 120, 130), 58, 105, 3.0, 18),
+    "taxi":      ((240, 210, 40), 42, 70, 6.0, 12),
+    "scooter":   ((220, 70, 70), 25, 48, 7.0, 8),
+    "bicycle":   ((40, 200, 90), 22, 45, 5.5, 6),
+    "goat":      ((170, 130, 80), 35, 35, 3.0, 15),
+    "cow":       ((245, 245, 235), 55, 65, 2.0, 25),
+    "chicken":   ((245, 220, 90), 20, 20, 3.5, 5),
+    "elephant":  ((130, 130, 140), 90, 115, 1.5, 60),
+    "buffalo":   ((65, 45, 30), 70, 75, 2.5, 50),
+    "alligator": ((50, 120, 65), 75, 35, 2.0, 30),
+    "golfcart":  ((240, 240, 210), 45, 65, 1.8, 10),
+    "pedestrian":((230, 150, 110), 20, 35, 3.0, 7),
+    "bus":       ((80, 150, 210), 70, 120, 2.5, 25),
+}
+
+
+class Hazard:
+    def __init__(self, kind, x=None, y=None):
+        self.kind = kind
+
+        color, width, height, speed, damage = HAZARD_DATA[kind]
+
+        self.color = color
+        self.width = width
+        self.height = height
+        self.speed = speed
+        self.damage = damage
+
+        self.x = x if x is not None else random.randint(100, WIDTH - 100)
+        self.y = y if y is not None else -100
+
+        self.direction = random.choice([-1, 1])
+
+        # Special behavior
+        self.crossing = kind in [
+            "goat",
+            "cow",
+            "chicken",
+            "buffalo",
+            "alligator",
+            "pedestrian"
+        ]
+
+        self.aggressive = kind == "taxi"
+
+        self.alive = True
+
+    def update(self, player):
+        if self.kind == "taxi":
+            # Aggressive taxi behavior
+            if self.x < player.x:
+                self.x += 1.2
+            else:
+                self.x -= 1.2
+
+            self.y += self.speed
+
+        elif self.crossing:
+            self.y += self.speed
+
+            # Wildlife randomly wanders horizontally.
+            if self.kind in [
+                "goat",
+                "cow",
+                "buffalo",
+                "alligator",
+                "chicken"
+            ]:
+                self.x += math.sin(self.y * 0.02) * 2
+
+        else:
+            self.y += self.speed
+
+        # Keep things in the world.
+        self.x = clamp(self.x, 20, WIDTH - 20)
+
+        if self.y > HEIGHT + 150:
+            self.alive = False
+
+    def rect(self):
+        return pygame.Rect(
+            int(self.x - self.width // 2),
+            int(self.y - self.height // 2),
+            self.width,
+            self.height
+        )
+
+    def draw(self):
+        rect = self.rect()
+
+        pygame.draw.rect(
+            screen,
+            self.color,
+            rect,
+            border_radius=8
+        )
+
+        # Simple visual identifiers
+        if self.kind == "buffalo":
+            pygame.draw.circle(
+                screen,
+                (30, 20, 10),
+                (int(self.x), int(self.y)),
+                12
+            )
+
+        elif self.kind == "alligator":
+            pygame.draw.polygon(
+                screen,
+                self.color,
+                [
+                    (rect.left, rect.centery),
+                    (rect.right, rect.top),
+                    (rect.right, rect.bottom)
+                ]
+            )
+
+        elif self.kind == "elephant":
+            pygame.draw.circle(
+                screen,
+                (100, 100, 110),
+                (rect.left + 18, rect.top + 25),
+                13
+            )
+
+        elif self.kind == "chicken":
+            pygame.draw.circle(
+                screen,
+                (255, 100, 80),
+                (int(self.x), int(self.y - 5)),
+                5
+            )
+
+
+# ------------------------------------------------------------
+# Game
+# ------------------------------------------------------------
+
+class Game:
+    def __init__(self):
+        self.player = Player()
+
+        self.level = 1
+
+        self.hazards = []
+
+        self.spawn_timer = 0
+
+        self.score = 0
+        self.survival_time = 0
+
+        self.message = ""
+        self.message_timer = 0
+
+        self.game_over = False
+        self.level_complete = False
+
+        self.airplane_timer = 0
+
+        self.random_seed = random.randint(1, 999999)
+
+    # --------------------------------------------------------
+    # Level handling
+    # --------------------------------------------------------
+
+    def start_level(self, level):
+        self.level = clamp(level, 1, 12)
+
+        self.player.health = 100
+        self.player.fuel = 100
+
+        self.hazards.clear()
+
+        self.score = 0
+        self.survival_time = 0
+
+        self.game_over = False
+        self.level_complete = False
+
+        self.message = f"LEVEL {self.level}: {LEVELS[self.level - 1]}"
+        self.message_timer = 180
+
+    # --------------------------------------------------------
+    # Spawn system
+    # --------------------------------------------------------
+
+    def spawn_hazard(self):
+        available = LEVEL_HAZARDS[self.level]
+
+        # Remove non-hazard conceptual entries.
+        available = [
+            x for x in available
+            if x != "fuel_warning"
+        ]
+
+        if not available:
+            return
+
+        kind = random.choice(available)
+
+        # Level 6+ buffalo can appear across the highway.
+        if kind == "buffalo":
+            x = random.choice([
+                random.randint(100, 300),
+                random.randint(450, 800),
+                random.randint(950, 1150)
+            ])
+
+        else:
+            x = random.randint(100, WIDTH - 100)
+
+        self.hazards.append(Hazard(kind, x, -100))
+
+    # --------------------------------------------------------
+    # Airport event
+    # --------------------------------------------------------
+
+    def spawn_airplane(self):
+        if self.level < 11:
+            return
+
+        # Represent aircraft as a huge horizontal object
+        # moving across the upper portion of the screen.
+        plane = Hazard(
+            "truck",
+            random.randint(-100, WIDTH + 100),
+            80
+        )
+
+        plane.width = 220
+        plane.height = 45
+        plane.speed = 9
+
+        self.hazards.append(plane)
+
+        self.message = "✈ AIRCRAFT CROSSING ABOVE THE ROAD!"
+        self.message_timer = 100
+
+    # --------------------------------------------------------
+    # Collision
+    # --------------------------------------------------------
+
+    def check_collisions(self):
+        player_rect = self.player.rect()
+
+        for hazard in self.hazards:
+            if not hazard.alive:
+                continue
+
+            if player_rect.colliderect(hazard.rect()):
+
+                self.player.take_damage(hazard.damage)
+
+                # Bounce the hazard away
+                hazard.y += 40
+
+                self.score += 25
+
+                if hazard.kind == "buffalo":
+                    self.message = "🦬 BUFFALO IMPACT!"
+                    self.message_timer = 80
+
+                elif hazard.kind == "elephant":
+                    self.message = "🐘 ELEPHANT ROADBLOCK!"
+                    self.message_timer = 80
+
+                elif hazard.kind == "alligator":
+                    self.message = "🐊 FLORIDA HAS ENTERED THE CHAT"
+                    self.message_timer = 100
+
+                elif hazard.kind == "taxi":
+                    self.message = "🚕 AGGRESSIVE TAXI!"
+                    self.message_timer = 70
+
+    # --------------------------------------------------------
+    # Drawing
+    # --------------------------------------------------------
+
+    def draw_background(self):
+        screen.fill((55, 130, 65))
+
+        # Road
+        pygame.draw.rect(
+            screen,
+            (55, 55, 60),
+            (80, 0, WIDTH - 160, HEIGHT)
+        )
+
+        # Road borders
+        pygame.draw.rect(
+            screen,
+            (235, 235, 235),
+            (80, 0, 8, HEIGHT)
+        )
+
+        pygame.draw.rect(
+            screen,
+            (235, 235, 235),
+            (WIDTH - 88, 0, 8, HEIGHT)
+        )
+
+        # Moving center markings
+        offset = int(self.survival_time * self.player.speed * 25) % 80
+
+        for y in range(-80, HEIGHT + 80, 80):
+            pygame.draw.rect(
+                screen,
+                (240, 240, 180),
+                (WIDTH // 2 - 4, y + offset, 8, 40)
+            )
+
+        # Special level environments
+
+        if self.level == 5:
+            # Elephant roadblock theme
+            draw_text(
+                "ELEPHANT COUNTRY",
+                WIDTH // 2,
+                30,
+                SMALL_FONT,
+                True
+            )
+
+        if self.level == 6:
+            draw_text(
+                "SOUTH DAKOTA — WATCH FOR BUFFALO",
+                WIDTH // 2,
+                30,
+                SMALL_FONT,
+                True
+            )
+
+        if self.level == 7:
+            # Florida lake
+            pygame.draw.rect(
+                screen,
+                (40, 120, 190),
+                (0, 0, 75, HEIGHT)
+            )
+
+        if self.level == 9:
+            # Fake mountain silhouettes
+            pygame.draw.polygon(
+                screen,
+                (90, 90, 100),
+                [
+                    (0, 250),
+                    (120, 80),
+                    (250, 250)
+                ]
+            )
+
+            pygame.draw.polygon(
+                screen,
+                (110, 110, 120),
+                [
+                    (WIDTH - 250, 250),
+                    (WIDTH - 100, 60),
+                    (WIDTH, 250)
+                ]
+            )
+
+        if self.level == 10:
+            draw_text(
+                "REMOTE HIGHWAY — FUEL MATTERS",
+                WIDTH // 2,
+                30,
+                SMALL_FONT,
+                True
+            )
+
+        if self.level == 11:
+            draw_text(
+                "AIRPORT RUNWAY ABOVE ROADWAY",
+                WIDTH // 2,
+                30,
+                SMALL_FONT,
+                True
+            )
+
+    def draw_ui(self):
+        # Top panel
+        pygame.draw.rect(
+            screen,
+            (20, 20, 25),
+            (0, 0, WIDTH, 62)
+        )
+
+        draw_text(
+            f"LEVEL {self.level}/12 — {LEVELS[self.level - 1]}",
+            20,
+            10,
+            FONT
+        )
+
+        draw_text(
+            f"SCORE: {self.score}",
+            20,
+            38,
+            SMALL_FONT
+        )
+
+        # Health
+        pygame.draw.rect(
+            screen,
+            (50, 50, 50),
+            (WIDTH - 330, 15, 130, 18)
+        )
+
+        pygame.draw.rect(
+            screen,
+            (220, 60, 60),
+            (WIDTH - 330, 15, 130 * self.player.health / 100, 18)
+        )
+
+        draw_text(
+            f"HP {int(self.player.health)}",
+            WIDTH - 190,
+            12,
+            SMALL_FONT
+        )
+
+        # Fuel
+        pygame.draw.rect(
+            screen,
+            (50, 50, 50),
+            (WIDTH - 330, 38, 130, 15)
+        )
+
+        pygame.draw.rect(
+            screen,
+            (240, 190, 40),
+            (WIDTH - 330, 38, 130 * self.player.fuel / 100, 15)
+        )
+
+        draw_text(
+            f"FUEL {int(self.player.fuel)}%",
+            WIDTH - 190,
+            35,
+            SMALL_FONT
+        )
+
+        # Speed
+        draw_text(
+            f"SPEED {int(self.player.speed * 15)} MPH",
+            WIDTH - 330,
+            58,
+            SMALL_FONT
+        )
+
+        # Message
+        if self.message_timer > 0:
+            draw_text(
+                self.message,
+                WIDTH // 2,
+                HEIGHT - 75,
+                BIG_FONT,
+                True
+            )
+
+        # Fuel warning
+        if self.player.fuel < 20:
+            draw_text(
+                "⚠ LOW FUEL",
+                WIDTH // 2,
+                85,
+                BIG_FONT,
+                True
+            )
+
+    # --------------------------------------------------------
+    # Update
+    # --------------------------------------------------------
+
+    def update(self):
+        if self.game_over:
+            return
+
+        keys = pygame.key.get_pressed()
+
+        self.player.update(keys, self.level)
+
+        self.survival_time += 1 / FPS
+
+        # Score for survival
+        self.score += int(self.player.speed * 0.02)
+
+        # Spawn frequency gets increasingly ridiculous.
+        base_interval = max(
+            12,
+            55 - self.level * 4
+        )
+
+        self.spawn_timer -= 1
+
+        if self.spawn_timer <= 0:
+            self.spawn_hazard()
+
+            self.spawn_timer = random.randint(
+                int(base_interval * 0.5),
+                int(base_interval)
+            )
+
+        # Airport aircraft
+        if self.level >= 11:
+            self.airplane_timer -= 1
+
+            if self.airplane_timer <= 0:
+                self.spawn_airplane()
+                self.airplane_timer = random.randint(300, 600)
+
+        # Update hazards
+        for hazard in self.hazards:
+            hazard.update(self.player)
+
+        self.check_collisions()
+
+        self.hazards = [
+            h for h in self.hazards
+            if h.alive
+        ]
+
+        # Level 10 = fuel survival
+        if self.level == 10 and self.player.fuel <= 0:
+            self.message = "⛽ OUT OF FUEL IN THE MIDDLE OF NOWHERE"
+            self.message_timer = 999
+
+            if self.player.speed <= 0.1:
+                self.game_over = True
+
+        # Death
+        if self.player.health <= 0:
+            self.game_over = True
+
+        if self.message_timer > 0:
+            self.message_timer -= 1
+
+    # --------------------------------------------------------
+    # Draw
+    # --------------------------------------------------------
+
+    def draw(self):
+        self.draw_background()
+
+        for hazard in self.hazards:
+            hazard.draw()
+
+        self.player.draw()
+
+        self.draw_ui()
+
+        if self.game_over:
+            pygame.draw.rect(
+                screen,
+                (0, 0, 0),
+                (0, 0, WIDTH, HEIGHT),
+                0
+            )
+
+            draw_text(
+                "GAME OVER",
+                WIDTH // 2,
+                HEIGHT // 2 - 70,
+                BIG_FONT,
+                True
+            )
+
+            draw_text(
+                f"Score: {self.score}",
+                WIDTH // 2,
+                HEIGHT // 2,
+                FONT,
+                True
+            )
+
+            draw_text(
+                "Press R to restart level",
+                WIDTH // 2,
+                HEIGHT // 2 + 45,
+                FONT,
+                True
+            )
+
+            draw_text(
+                "Press ESC to quit",
+                WIDTH // 2,
+                HEIGHT // 2 + 80,
+                SMALL_FONT,
+                True
+            )
+
+
+# ------------------------------------------------------------
+# Main
+# ------------------------------------------------------------
+
+def main():
+    game = Game()
+    game.start_level(1)
+
+    running = True
+
+    while running:
+
+        for event in pygame.event.get():
+
+            if event.type == pygame.QUIT:
+                running = False
+
+            if event.type == pygame.KEYDOWN:
+
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+
+                # Next level
+                if event.key == pygame.K_n:
+                    game.start_level(game.level + 1)
+
+                # Previous level
+                if event.key == pygame.K_p:
+                    game.start_level(game.level - 1)
+
+                # Restart
+                if event.key == pygame.K_r:
+                    game.start_level(game.level)
+
+        game.update()
+        game.draw()
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+    pygame.quit()
+    sys.exit()
+
+
+if __name__ == "__main__":
+    main()
